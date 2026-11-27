@@ -1,0 +1,43 @@
+appId: app.facet.desktop
+productName: Facet Browsers Antidetect
+# Preserva o executável e o diretório de instalação nas atualizações.
+executableName: Facet
+directories:
+  output: release
+files:
+  - out/**/*
+  - package.json
+extraResources:
+  - from: resources/facet-extension
+    to: facet-extension
+  - from: build/icon.png
+    to: icon.png
+  - from: drizzle
+    to: drizzle
+asarUnpack:
+  - node_modules/better-sqlite3/**
+npmRebuild: false
+win:
+  icon: build/icon.ico
+  # Utilitário da barra de tarefas (botão próprio por perfil), compilado por scripts/build-win-helper.mjs.
+  extraResources:
+    - from: build/facet-win-helper.exe
+      to: facet-win-helper.exe
+    # Ungoogled Chromium que vem com o Facet (scripts/fetch-ungoogled-chromium.mjs): navegador padrão.
+    - from: vendor/ungoogled-chromium
+      to: browsers/ungoogled-chromium
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  artifactName: Facet-Setup-${version}.${ext}
+  oneClick: false
+  perMachine: false
+  allowElevation: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Facet Browsers Antidetect
+  deleteAppDataOnUninstall: false
+  installerLanguages: [pt_BR, en_US, es_ES]
+  displayLanguageSelector: true

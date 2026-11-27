@@ -1,0 +1,65 @@
+{
+  "manifest_version": 3,
+  "name": "Facet",
+  "version": "1.1.1",
+  "default_locale": "pt_BR",
+  "description": "__MSG_description__",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwoD9u4ImmJgN6B1r4vYHwmHP42h1+rv3Y6NYmEwIfcBUhW9KiI3Tl+/ro9jj+0E4RTmK8j58Q/KotoB8DvP8wT4mwuulSSDi/I3iERgj6dnrPKVP1CoaPDll/LIqsWUKsvLmG6s3v68Tw4x8fzoDH4pseaior77LrO1kHxinOYC0D7RjwOcMPRoK7Zju6BxOoOceHV44BkMT2798HAeJ7CV2qKUYmCKHrtQda9G+jgGormHVw0iFsr3L76UyUWwacMQlqkVIxaz5UsVr55ApgCc9lDIQBx7iUxJzKRA7tm+VDqnQwKZkuZZ3AS6n+4dRTD9GAD9iHFGlf2olUxKIcwIDAQAB",
+  "minimum_chrome_version": "120",
+  "permissions": ["storage", "declarativeNetRequest", "scripting", "privacy"],
+  "host_permissions": ["http://*/*", "https://*/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["core.js", "content.js"],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Facet",
+    "default_icon": {
+      "16": "icon16.png",
+      "32": "icon32.png"
+    }
+  },
+  "icons": {
+    "16": "icon16.png",
+    "32": "icon32.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "ads",
+        "enabled": true,
+        "path": "rules/ads.json"
+      },
+      {
+        "id": "privacy",
+        "enabled": true,
+        "path": "rules/privacy.json"
+      },
+      {
+        "id": "malware",
+        "enabled": true,
+        "path": "rules/malware.json"
+      },
+      {
+        "id": "unbreak",
+        "enabled": true,
+        "path": "rules/unbreak.json"
+      },
+      {
+        "id": "optimize",
+        "enabled": true,
+        "path": "optimize.json"
+      }
+    ]
+  }
+}

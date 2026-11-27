@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Facet</title>
+    <link rel="stylesheet" href="popup.css" />
+    <script defer src="core.js"></script>
+    <script defer src="popup.js"></script>
+  </head>
+  <body>
+    <header>
+      <img src="icon32.png" alt="" width="28" height="28" />
+      <div class="title">
+        <h1>Facet</h1>
+        <p data-text="scope"></p>
+      </div>
+      <input type="checkbox" id="enabled" role="switch" class="switch" />
+    </header>
+    <main>
+      <section class="options">
+        <label class="option" for="adblock">
+          <span><strong data-text="adblock"></strong><small data-text="adblockHint"></small></span>
+          <input type="checkbox" id="adblock" role="switch" class="switch" />
+        </label>
+        <label class="option" for="optimize">
+          <span><strong data-text="optimize"></strong><small data-text="optimizeHint"></small></span>
+          <input type="checkbox" id="optimize" role="switch" class="switch" />
+        </label>
+        <label class="option" for="indicator">
+          <span><strong data-text="indicator"></strong><small data-text="indicatorHint"></small></span>
+          <input type="checkbox" id="indicator" role="switch" class="switch" />
+        </label>
+      </section>
+      <section class="connection">
+        <h2 data-text="connection"></h2>
+        <dl>
+          <div>
+            <dt data-text="ip"></dt>
+            <dd id="ip">—</dd>
+          </div>
+          <div>
+            <dt data-text="latency"></dt>
+            <dd id="latency">—</dd>
+          </div>
+          <div>
+            <dt data-text="speed"></dt>
+            <dd id="speed">—</dd>
+          </div>
+          <div>
+            <dt data-text="usage"></dt>
+            <dd id="usage">—</dd>
+          </div>
+        </dl>
+        <button type="button" id="measure" data-text="measure"></button>
+        <button type="button" id="reset" class="secondary" data-text="reset"></button>
+        <p id="error" role="status"></p>
+        <p class="hint" data-text="note"></p>
+      </section>
+    </main>
+    <footer><a href="NOTICE.txt" target="_blank" rel="noopener" data-text="notice"></a></footer>
+  </body>
+</html>

@@ -1,0 +1,42 @@
+Facet – filter lists and licenses
+
+The ad, tracker and malware blocking in this extension is compiled from the filter lists that
+uBlock Origin (https://github.com/gorhill/uBlock) enables by default. The original lists are
+included in third-party/lists/, with their source URL, download date and SHA-256 in
+third-party/sources.json.
+
+  uBlock filters (Ads, Badware risks, Privacy, Unbreak, Quick fixes)
+    The uBlock Origin authors – https://github.com/uBlockOrigin/uAssets
+    License: GNU General Public License v3.0 (third-party/GPL-3.0.txt)
+
+  EasyList, EasyPrivacy
+    The EasyList authors – https://easylist.to/
+    License: GNU GPL v3.0 or Creative Commons Attribution-ShareAlike 3.0 Unported
+    (third-party/GPL-3.0.txt, third-party/CC-BY-SA-3.0.txt)
+
+  Peter Lowe's Ad and tracking server list
+    Peter Lowe – https://pgl.yoyo.org/adservers/
+    Terms: free to combine with other lists and publish, with attribution.
+
+  Online Malicious URL Blocklist (hosts variant)
+    malware-filter – https://gitlab.com/malware-filter/urlhaus-filter
+    Data: URLhaus by abuse.ch (CC0 1.0); list: CC0 1.0 and MIT.
+
+Derived files: rules/ads.json, rules/privacy.json, rules/malware.json, rules/unbreak.json and
+cosmetic.json are generated from the lists above and are distributed under the GNU GPL v3.0
+(the license of the uBlock filters), together with the lists themselves.
+
+Modifications by Facet: network filters are converted to Chromium declarativeNetRequest rules
+(blocking, exceptions, important, domain, third-party, resource types, denyallow, to, method and
+badfilter), with whole-host filters grouped by domain. Element hiding filters become per-site
+and generic CSS selectors, applied as a user style sheet. Filters that require changing the
+page's JavaScript or HTML (scriptlets, procedural and extended CSS, HTML filters), redirects,
+query parameter removal, CSP injection, popup blocking and regular expressions are not
+included. The URLhaus list is the variant with whole malicious hosts. This is a subset of the
+original filter lists, not a complete implementation, and no endorsement by their authors is
+implied.
+
+Regenerate from the included lists (offline), or download them again:
+  node scripts/build-facet-filters.mjs
+  node scripts/build-facet-filters.mjs --update
+The extension does not download executable code or filter updates at runtime.

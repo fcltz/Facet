@@ -1,0 +1,4 @@
+# Gerados por scripts/build-facet-filters.mjs a partir das listas do uBlock Origin (e as listas)
+resources/facet-extension/rules/
+resources/facet-extension/cosmetic.json
+resources/facet-extension/third-party/

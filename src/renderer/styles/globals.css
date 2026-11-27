@@ -1,0 +1,164 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Tokens de design do Facet. Destaque azul-violeta #5B5BF7, cantos de 8–12 px,
+ * sombras suaves. Os nomes seguem a convenção do shadcn/ui.
+ */
+:root {
+  --radius: 0.625rem;
+  --background: #f7f8fb;
+  --foreground: #0f1222;
+  --card: #ffffff;
+  --card-foreground: #0f1222;
+  --popover: #ffffff;
+  --popover-foreground: #0f1222;
+  --primary: #5b5bf7;
+  --primary-foreground: #ffffff;
+  --secondary: #eef0fb;
+  --secondary-foreground: #1d2045;
+  --muted: #f1f3f8;
+  --muted-foreground: #667085;
+  --accent: #eef0fa;
+  --accent-foreground: #1a1d35;
+  --destructive: #e5484d;
+  --destructive-foreground: #ffffff;
+  --success: #12b76a;
+  --warning: #f5a524;
+  --border: #e6e8f0;
+  --input: #dfe2ec;
+  --ring: #5b5bf7;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #3b4058;
+  --sidebar-border: #eceef4;
+  --sidebar-accent: #f1f1fe;
+  --sidebar-accent-foreground: #4646d9;
+}
+
+.dark {
+  --background: #0b0d14;
+  --foreground: #e8eaf2;
+  --card: #12151f;
+  --card-foreground: #e8eaf2;
+  --popover: #151925;
+  --popover-foreground: #e8eaf2;
+  --primary: #6d6df9;
+  --primary-foreground: #ffffff;
+  --secondary: #1d2133;
+  --secondary-foreground: #d6d9ff;
+  --muted: #171b27;
+  --muted-foreground: #8b91a7;
+  --accent: #1c2132;
+  --accent-foreground: #e8eaf2;
+  --destructive: #f2555a;
+  --destructive-foreground: #ffffff;
+  --success: #32d583;
+  --warning: #fdb022;
+  --border: #232838;
+  --input: #2a3043;
+  --ring: #7b7bfa;
+  --sidebar: #0f121b;
+  --sidebar-foreground: #b4b9cc;
+  --sidebar-border: #1d2130;
+  --sidebar-accent: #1b1e36;
+  --sidebar-accent-foreground: #c7c7ff;
+}
+
+@theme inline {
+  --font-sans: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 2px);
+
+  --shadow-soft: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
+  --shadow-float: 0 16px 40px -12px rgb(16 24 40 / 0.22), 0 4px 10px -4px rgb(16 24 40 / 0.1);
+
+  --animate-status-pulse: status-pulse 1.1s ease-in-out infinite;
+
+  @keyframes status-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'cv11', 'ss01', 'ss03';
+    overflow: hidden;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--primary) 25%, transparent);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background-clip: content-box;
+    background-color: color-mix(in oklab, var(--muted-foreground) 35%, transparent);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in oklab, var(--muted-foreground) 55%, transparent);
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}

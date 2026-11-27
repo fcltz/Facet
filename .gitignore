@@ -1,0 +1,57 @@
+# dependências e builds
+node_modules/
+out/
+dist/
+release/
+build/facet-win-helper.exe
+# Ungoogled Chromium baixado por scripts/fetch-ungoogled-chromium.mjs
+vendor/
+
+# testes
+coverage/
+# índices que o Chromium grava ao carregar a extensão Facet descompactada
+resources/facet-extension/_metadata/
+playwright-report/
+test-results*/
+.tmp*/
+
+# editores e sistema
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+*.tsbuildinfo
+
+# ambiente local
+.env
+.env.*
+!.env.example
+
+# dados locais e exportações — nunca publicar perfis ou credenciais de usuários
+/data/
+/profiles/
+/user-data/
+/backups/
+/exports/
+/logs/
+*.sqlite
+*.sqlite-*
+*.db
+*.db-wal
+*.db-shm
+*.har
+*.dmp
+*.pfx
+*.p12
+*.pem
+*.key
+!tests/fixtures/tls/facet-test.key
+cookies.txt
+cookies.json
+credentials.json
+settings.local.json
+auth.json
+*.tmp
+*.bak

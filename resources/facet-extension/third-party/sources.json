@@ -1,0 +1,83 @@
+[
+  {
+    "id": "ublock-filters",
+    "title": "uBlock filters – Ads",
+    "url": "https://ublockorigin.github.io/uAssets/filters/filters.txt",
+    "license": "GPL-3.0",
+    "fetchedAt": "2026-11-26T22:48:30.917Z",
+    "sha256": "da0947acbedcd155f6f5632750454b0872ac6786a869e9f15adaf9b726ac1764",
+    "lines": 43389
+  },
+  {
+    "id": "ublock-badware",
+    "title": "uBlock filters – Badware risks",
+    "url": "https://ublockorigin.github.io/uAssets/filters/badware.txt",
+    "license": "GPL-3.0",
+    "fetchedAt": "2026-11-26T22:48:30.949Z",
+    "sha256": "4d035917b170f17b58ccde6514175f37b7fd750050a5fb7fe5abf11ddc63938b",
+    "lines": 7075
+  },
+  {
+    "id": "ublock-privacy",
+    "title": "uBlock filters – Privacy",
+    "url": "https://ublockorigin.github.io/uAssets/filters/privacy.txt",
+    "license": "GPL-3.0",
+    "fetchedAt": "2026-11-26T22:48:30.970Z",
+    "sha256": "cb9b4dbfa1d4ec5aa853b1d457644a8bad4d014a4c3c27bb4aa8bf35f4666759",
+    "lines": 3662
+  },
+  {
+    "id": "ublock-unbreak",
+    "title": "uBlock filters – Unbreak",
+    "url": "https://ublockorigin.github.io/uAssets/filters/unbreak.txt",
+    "license": "GPL-3.0",
+    "fetchedAt": "2026-11-26T22:48:30.997Z",
+    "sha256": "287ff246579f13c24c3d73f45a8a23f0ad7edc92771e2ae63fa126afe07a239e",
+    "lines": 6093
+  },
+  {
+    "id": "ublock-quick-fixes",
+    "title": "uBlock filters – Quick fixes",
+    "url": "https://ublockorigin.github.io/uAssets/filters/quick-fixes.txt",
+    "license": "GPL-3.0",
+    "fetchedAt": "2026-11-26T22:48:31.007Z",
+    "sha256": "88234cb70281b93dccd5eb03840df56a183bec730e0e73e3678549b2d492e555",
+    "lines": 593
+  },
+  {
+    "id": "easylist",
+    "title": "EasyList",
+    "url": "https://ublockorigin.github.io/uAssets/thirdparties/easylist.txt",
+    "license": "GPL-3.0 OR CC-BY-SA-3.0",
+    "fetchedAt": "2026-11-26T22:48:31.085Z",
+    "sha256": "7fe755d3120a5ead9d1fd4fcba448761b3f5a083dace08423707ddfcf0d4ce27",
+    "lines": 79034
+  },
+  {
+    "id": "easyprivacy",
+    "title": "EasyPrivacy",
+    "url": "https://ublockorigin.github.io/uAssets/thirdparties/easyprivacy.txt",
+    "license": "GPL-3.0 OR CC-BY-SA-3.0",
+    "fetchedAt": "2026-11-26T22:48:31.138Z",
+    "sha256": "d8512d3201580ff5a82c3088984ab9b80521adb226912533db0526186019f22a",
+    "lines": 57284
+  },
+  {
+    "id": "plowe-0",
+    "title": "Peter Lowe's Ad and tracking server list",
+    "url": "https://pgl.yoyo.org/adservers/serverlist.php?hostformat=hosts&showintro=1&mimetype=plaintext",
+    "license": "Peter Lowe (uso livre com atribuição: https://pgl.yoyo.org/adservers/)",
+    "fetchedAt": "2026-11-26T22:48:32.256Z",
+    "sha256": "fff63374ccc204c0a13dc5d6164ae26eb7fdb30c18018bffdc60483b5f6cbffd",
+    "lines": 3575
+  },
+  {
+    "id": "urlhaus-1",
+    "title": "Online Malicious URL Blocklist (hosts)",
+    "url": "https://malware-filter.gitlab.io/urlhaus-filter/urlhaus-filter-domains-online.txt",
+    "license": "CC0-1.0 (URLhaus) e MIT (urlhaus-filter)",
+    "fetchedAt": "2026-11-26T22:48:32.710Z",
+    "sha256": "f2a584db3582a2ada249a3adef7c3a605327a46398cbbf53e27767bdd3c5f87b",
+    "lines": 1951
+  }
+]

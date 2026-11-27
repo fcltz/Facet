@@ -1,0 +1,5 @@
+* text=auto eol=lf
+*.png binary
+*.ico binary
+# Listas verificadas por SHA-256: preserve os bytes originais.
+resources/facet-extension/third-party/lists/** -text

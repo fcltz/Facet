@@ -1,0 +1,1 @@
+ALTER TABLE `proxies` DROP COLUMN `change_ip_url`;
