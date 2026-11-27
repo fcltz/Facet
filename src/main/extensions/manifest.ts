@@ -218,6 +218,40 @@ export function writeManifestKey(root: string, raw: Record<string, unknown>, key
   fs.renameSync(tmp, file)
 }
 
+/**
+ * Dá ao service worker desta versão um arquivo de nome próprio (cópia ao lado do original).
+ * Carregada de uma pasta nova com o mesmo arquivo do service worker, a extensão atualizada
+ * lê o manifest novo, mas o Chromium continua executando o script antigo guardado no perfil
+ * (verificado no Ungoogled 158: 1.1.1 → 1.2.0). Com outro nome, ele registra o novo.
+ * Manifest ilegível ou caminho estranho: nada muda.
+ */
+export function uniqueServiceWorker(root: string, tag: string): void {
+  const file = path.join(root, 'manifest.json')
+  let raw: Record<string, unknown>
+  try {
+    raw = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, unknown>
+  } catch {
+    return
+  }
+  const background = raw.background as Record<string, unknown> | undefined
+  const worker = background?.service_worker
+  if (typeof worker !== 'string') return
+  const relative = worker.replace(/^\.?\//, '')
+  const source = path.resolve(root, relative)
+  if (!source.startsWith(path.resolve(root) + path.sep) || !fs.existsSync(source)) return
+  if (!/^[0-9a-z_-]+$/i.test(tag)) return
+  const parsed = path.posix.parse(relative.replace(/\\/g, '/'))
+  const renamed = path.posix.join(parsed.dir, `${parsed.name}.facet-${tag}${parsed.ext || '.js'}`)
+  fs.copyFileSync(source, path.join(root, renamed))
+  const tmp = `${file}.tmp`
+  fs.writeFileSync(
+    tmp,
+    `${JSON.stringify({ ...raw, background: { ...background, service_worker: renamed } }, null, 2)}\n`,
+    'utf8',
+  )
+  fs.renameSync(tmp, file)
+}
+
 /** Nova chave RSA-2048 (só a parte pública é usada: ela define o ID; nada é assinado). */
 export function generatePublicKey(): string {
   const { publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })

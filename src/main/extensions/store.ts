@@ -4,6 +4,7 @@ import path from 'node:path'
 import { AppError } from '@shared/ipc/result'
 import { isExtensionId } from '@shared/schemas/extension'
 import type { Logger } from '../logger'
+import { uniqueServiceWorker } from './manifest'
 import { validateEntryName, type UnpackLimits, type UnpackResult } from './zip'
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
@@ -102,6 +103,8 @@ export class ExtensionStore {
     const key = `${id}/${dirName}`
     this.pending.add(key)
     try {
+      // cada versão com o seu arquivo de service worker (senão o perfil roda o script antigo)
+      uniqueServiceWorker(source, dirName)
       await renameWithRetry(source, path.join(parent, dirName))
     } catch (error) {
       this.pending.delete(key)
