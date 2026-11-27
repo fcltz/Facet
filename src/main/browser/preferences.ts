@@ -180,7 +180,20 @@ export function preparePreferences(
   patchPreferences(path.join(directory, 'Default', 'Preferences'), profilePatch, logger, (current) => {
     pinExtensions(current, pin, unpin)
     setPdfViewer(current, options.pdfViewer)
+    if (options.browser === 'ungoogled') chromeCookieControls(current)
   })
+}
+
+/**
+ * O Ungoogled Chromium bloqueia cookies de terceiros por padrão, e o Chrome só na janela anônima:
+ * logins e widgets dentro de um iframe de outro site perdiam a sessão a cada abertura (medido no
+ * Ungoogled 158; o cookie do iframe nem era gravado). Sem escolha do usuário gravada no perfil,
+ * usa o padrão do Chrome (2 = bloquear só na janela anônima); o Ungoogled mantém o valor.
+ */
+function chromeCookieControls(preferences: Record<string, unknown>): void {
+  if (!object(preferences.profile)) preferences.profile = {}
+  const profile = preferences.profile as Record<string, unknown>
+  if (profile.cookie_controls_mode === undefined) profile.cookie_controls_mode = 2
 }
 
 /** Liga ou desliga o visualizador de PDF; só desfaz a mudança que o próprio Facet fez. */

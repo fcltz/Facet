@@ -19,7 +19,18 @@ export interface BrowserFlavor {
   nativeNoise: boolean
   /** Flags próprias de uma abertura com ou sem o ruído nativo. */
   args(options: { noise: boolean }): string[]
+  /**
+   * Mantém os cookies de sessão entre aberturas com `--restore-last-session` (como "continuar de
+   * onde parou"; sem a flag, o Chromium os apaga ao abrir). Só onde foi verificado que as abas
+   * antigas não voltam: no Ungoogled Chromium 158 elas não voltam (o Facet apaga a sessão nativa);
+   * no Chrome 158 voltariam em dobro com as do Facet, e o Brave 158 ignora a flag para cookies. O
+   * Opera 140 já mantém os cookies de sessão sozinho.
+   */
+  keepSessionCookies: boolean
 }
+
+/** Abre restaurando a sessão anterior: os cookies de sessão continuam valendo. */
+export const RESTORE_SESSION_FLAG = '--restore-last-session'
 
 /**
  * Flags de fingerprinting do Ungoogled Chromium (presentes no 158): ruído nos pixels lidos do
@@ -46,6 +57,7 @@ export function createFlavors(options: {
       extensionLoading: 'flag',
       nativeNoise: true,
       args: ({ noise }) => (noise ? UNGOOGLED_NOISE_FLAGS : []),
+      keepSessionCookies: true,
     },
     chrome: {
       kind: 'chrome',
@@ -55,6 +67,7 @@ export function createFlavors(options: {
       extensionLoading: 'pipe',
       nativeNoise: false,
       args: () => [],
+      keepSessionCookies: false,
     },
     brave: {
       kind: 'brave',
@@ -65,6 +78,7 @@ export function createFlavors(options: {
       // o farbling é uma preferência do perfil (ver preparePreferences), não uma flag
       nativeNoise: true,
       args: () => [],
+      keepSessionCookies: false,
     },
     opera: {
       kind: 'opera',
@@ -74,6 +88,7 @@ export function createFlavors(options: {
       extensionLoading: 'flag',
       nativeNoise: false,
       args: () => [],
+      keepSessionCookies: false,
     },
   }
 }

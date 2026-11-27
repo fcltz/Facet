@@ -17,7 +17,7 @@ import {
 } from './process'
 import { ProfileFiles } from './profile-files'
 import { firstExisting } from './detect'
-import type { BrowserFlavor } from './flavors'
+import { RESTORE_SESSION_FLAG, type BrowserFlavor } from './flavors'
 import { clearNativeSession, preparePreferences } from './preferences'
 import { capabilitiesFor, fallbackBrands, readUaBrands } from './fingerprint/capabilities'
 import { geoPermission } from './fingerprint/apply'
@@ -323,6 +323,8 @@ export class ChromiumEngine implements BrowserEngine {
             ? [`--load-extension=${environment.extensionDirs.join(',')}`]
             : []),
         ...this.flavor.args({ noise }),
+        // cookies de sessão (logins sem "manter conectado") continuam valendo na próxima abertura
+        ...(this.flavor.keepSessionCookies ? [RESTORE_SESSION_FLAG] : []),
         ...profile.launchOptions.extraArgs,
       ],
       'profile',
@@ -367,7 +369,13 @@ export class ChromiumEngine implements BrowserEngine {
     const child = this.spawn(
       info.executablePath,
       directory,
-      ['--headless=new', '--proxy-server=http://127.0.0.1:9', '--proxy-bypass-list=<-loopback>'],
+      [
+        '--headless=new',
+        '--proxy-server=http://127.0.0.1:9',
+        '--proxy-bypass-list=<-loopback>',
+        // sem a flag, abrir o perfil fechado (exportar cookies) apagaria os cookies de sessão
+        ...(this.flavor.keepSessionCookies ? [RESTORE_SESSION_FLAG] : []),
+      ],
       'probe',
     )
     let client: CdpClient

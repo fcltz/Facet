@@ -76,6 +76,32 @@ describe('preferências por navegador', () => {
     }
   })
 
+  it('o Ungoogled aceita cookies de terceiros como o Chrome, sem desfazer a escolha do usuário', () => {
+    for (const browser of ['ungoogled', 'chrome', 'opera', 'brave'] as const) {
+      const directory = temporary()
+      preparePreferences(directory, ['pt-BR'], silentLogger, { browser })
+      const prefs = read(path.join(directory, 'Default', 'Preferences')) as {
+        profile: Record<string, unknown>
+      }
+      // 2 = bloquear terceiros só na janela anônima (padrão do Chrome)
+      expect(prefs.profile.cookie_controls_mode, browser).toBe(browser === 'ungoogled' ? 2 : undefined)
+    }
+    // o usuário escolheu bloquear terceiros nas configurações do Ungoogled: continua assim
+    const directory = temporary()
+    const file = path.join(directory, 'Default', 'Preferences')
+    fs.mkdirSync(path.dirname(file), { recursive: true })
+    fs.writeFileSync(file, JSON.stringify({ profile: { cookie_controls_mode: 1 } }))
+    preparePreferences(directory, ['pt-BR'], silentLogger, { browser: 'ungoogled' })
+    expect((read(file) as { profile: Record<string, unknown> }).profile.cookie_controls_mode).toBe(1)
+  })
+
+  it('só o Ungoogled abre restaurando a sessão (mantém cookies de sessão sem reabrir abas)', () => {
+    const flavors = createFlavors({ bundledUngoogled: null })
+    expect(
+      Object.fromEntries(Object.entries(flavors).map(([kind, flavor]) => [kind, flavor.keepSessionCookies])),
+    ).toEqual({ ungoogled: true, chrome: false, brave: false, opera: false })
+  })
+
   it('Android baixa os PDFs; ao voltar ao computador o Facet desfaz só o que ele mudou', () => {
     const directory = temporary()
     const file = path.join(directory, 'Default', 'Preferences')

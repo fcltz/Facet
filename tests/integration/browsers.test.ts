@@ -1,5 +1,6 @@
 import fs from 'node:fs'
-import { resolve } from 'node:path'
+import http from 'node:http'
+import { join, resolve } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { createContainer, type Container } from '@main/container'
 import { CdpClient } from '@main/browser/cdp/client'
@@ -327,4 +328,74 @@ describe.skipIf(process.env.SKIP_BRAVE_TESTS === '1')('vários navegadores e cel
     expect(state.warnings).toContain('iosEngine')
     await app.services.profiles.stop([profile.id])
   }, 180000)
+
+  it.skipIf(!hasBundledBrowser)(
+    'Ungoogled: cookies de sessão e de terceiros continuam depois de fechar e abrir de novo',
+    async () => {
+      // 127.0.0.1 é o site; localhost, outro site dentro de um iframe (como um widget de login)
+      const server = http.createServer((request, response) => {
+        const port = (server.address() as { port: number }).port
+        if (request.url?.startsWith('/third')) {
+          response.writeHead(200, {
+            'content-type': 'text/html',
+            'set-cookie': ['third=1; Path=/; Max-Age=86400; SameSite=None; Secure'],
+          })
+          response.end('third')
+        } else if (request.url?.startsWith('/set')) {
+          response.writeHead(200, {
+            'content-type': 'text/html',
+            'set-cookie': ['sess=1; Path=/', 'pers=1; Path=/; Max-Age=86400'],
+          })
+          response.end(`<iframe src="http://localhost:${port}/third"></iframe>`)
+        } else {
+          response.writeHead(200, { 'content-type': 'text/html' })
+          response.end('ok')
+        }
+      })
+      await new Promise<void>((done) => server.listen(0, '127.0.0.1', done))
+      const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`
+      const cookies = async (id: string): Promise<string[]> => {
+        const endpoint = app.sessions.get(id)?.wsEndpoint
+        if (!endpoint) throw new Error('Sem sessão')
+        const client = await CdpClient.connect(endpoint)
+        clients.push(client)
+        const { cookies: all } = await client.send('Storage.getCookies', {})
+        return all
+          .filter((cookie) => cookie.domain === '127.0.0.1' || cookie.domain === 'localhost')
+          .map((cookie) => `${cookie.name}${cookie.session ? ' (sessão)' : ''}`)
+          .sort()
+      }
+      try {
+        const profile = app.services.profiles.create({
+          name: 'Sessão',
+          browser: 'ungoogled',
+          os: 'windows',
+          groupId: null,
+          proxyId: null,
+          tagIds: [],
+          color: null,
+          notes: '',
+          launchOptions: { ...structuredClone(DEFAULT_LAUNCH_OPTIONS), startupUrls: [`${origin}/set`] },
+        })
+        await app.services.profiles.start([profile.id])
+        const written = ['pers', 'sess (sessão)', 'third']
+        await vi.waitFor(async () => expect(await cookies(profile.id)).toEqual(written), { timeout: 20000 })
+        await app.services.profiles.stop([profile.id])
+        const preferences = JSON.parse(
+          fs.readFileSync(join(app.files.directory(profile.id), 'Default', 'Preferences'), 'utf8'),
+        ) as { profile: { cookie_controls_mode?: number } }
+        expect(preferences.profile.cookie_controls_mode).toBe(2)
+        // na segunda abertura nenhuma página grava cookies: tudo tem de vir do disco
+        app.services.profiles.update(profile.id, {
+          launchOptions: { ...structuredClone(DEFAULT_LAUNCH_OPTIONS), startupUrls: [`${origin}/check`] },
+        })
+        await app.services.profiles.start([profile.id])
+        expect(await cookies(profile.id)).toEqual(written)
+        await app.services.profiles.stop([profile.id])
+      } finally {
+        server.close()
+      }
+    },
+    180000,
+  )
 })

@@ -41,6 +41,8 @@ Cada perfil inicia o navegador escolhido com sua própria pasta. A porta CDP é 
 
 O Ungoogled Chromium é baixado de uma versão fixada e verificado por SHA-256. Chrome, Brave e Opera são detectados, com opção de caminho manual. Sondagens usam diretórios temporários.
 
+Cookies entre aberturas: o Ungoogled Chromium bloqueia cookies de terceiros por padrão, e o Chrome só na janela anônima. Sem uma escolha do usuário gravada no perfil, o Facet usa o padrão do Chrome (`profile.cookie_controls_mode = 2`), para logins e widgets em iframes de outro site não perderem a sessão. No Ungoogled, o perfil também abre com `--restore-last-session`, e os cookies de sessão continuam valendo; as abas antigas não voltam porque a sessão nativa é apagada antes. No Chrome e no Brave, os cookies de sessão seguem o padrão de fábrica (apagados ao abrir); o Opera já os mantém.
+
 No Chrome, extensões são carregadas pelo canal de depuração; quando esse canal fecha abruptamente, o Chrome com extensões também fecha. Os demais navegadores usam carregamento por flags quando suportado.
 
 ## Proxies e consultas externas
