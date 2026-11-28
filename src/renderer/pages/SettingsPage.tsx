@@ -1,4 +1,4 @@
-import { Check, Info, Keyboard, Monitor, Moon, Sun, type LucideIcon } from 'lucide-react'
+import { Check, Keyboard, Monitor, Moon, Sun, type LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LANGUAGES, THEMES } from '@shared/constants'
@@ -6,7 +6,7 @@ import { BackupSettings } from '@renderer/components/settings/BackupSettings'
 import { ProfilesFolderSettings } from '@renderer/components/settings/ProfilesFolderSettings'
 import type { Language, Theme } from '@shared/schemas/settings'
 import { StageBadge } from '@renderer/components/common/EmptyState'
-import { Field, Notice } from '@renderer/components/common/Field'
+import { Field } from '@renderer/components/common/Field'
 import { PageHeader } from '@renderer/components/layout/PageHeader'
 import { Button } from '@renderer/components/ui/button'
 import { BrowserSettings } from '@renderer/components/common/BrowserSettings'
@@ -119,7 +119,6 @@ export function SettingsPage() {
           </Section>
 
           <Section title={t('settings.about')}>
-            <Notice icon={<Info className="size-4" />}>{t('settings.demoNotice')}</Notice>
             {appInfo && (
               <div className="grid gap-2.5">
                 <InfoRow label={t('settings.version')} value={`${appInfo.name} ${appInfo.version}`} />

@@ -7,7 +7,7 @@
   </p>
   <p>
     <a href="#instalar"><img alt="Windows 10 e 11, x64" src="https://img.shields.io/badge/Windows-10%20%7C%2011%20x64-5B5BF7"></a>
-    <a href="package.json"><img alt="Versão 0.1.0" src="https://img.shields.io/badge/vers%C3%A3o-0.1.0-5B5BF7"></a>
+    <a href="package.json"><img alt="Versão 0.1.1" src="https://img.shields.io/badge/vers%C3%A3o-0.1.1-5B5BF7"></a>
     <a href="#recursos"><img alt="Português, English e Español" src="https://img.shields.io/badge/idiomas-PT%20%C2%B7%20EN%20%C2%B7%20ES-5B5BF7"></a>
     <a href="https://github.com/fcltz/Facet/stargazers"><img alt="Estrelas no GitHub" src="https://img.shields.io/github/stars/fcltz/Facet?label=estrelas&color=5B5BF7"></a>
   </p>
@@ -50,7 +50,7 @@ npm ci          # dependências exatas do package-lock.json
 npm run dist    # baixa o Electron e o Ungoogled Chromium (SHA-256 conferido) e gera o instalador
 ```
 
-O instalador aparece em `release\Facet-Setup-0.1.0.exe`. Ele é por usuário, deixa escolher a pasta, cria atalhos e tem desinstalador.
+O instalador aparece em `release\Facet-Setup-0.1.1.exe`. Ele é por usuário, deixa escolher a pasta, cria atalhos e tem desinstalador.
 
 > [!TIP]
 > Vai pedir para uma IA instalar no seu PC? Entregue o **[INSTALL.md](INSTALL.md)**: ele tem o passo a passo, as verificações e os cuidados para não apagar perfis existentes.
@@ -209,15 +209,6 @@ A estrutura do código, os dados locais e o funcionamento dos navegadores estão
 - Rode `npm run typecheck`, `npm run lint` e `npm run test -- tests/unit` antes de propor uma mudança.
 - Mantenha os textos em português, inglês e espanhol: `src/renderer/i18n` e `resources/facet-extension/_locales`.
 - Agentes de IA devem seguir o [AGENTS.md](AGENTS.md).
-
-## Histórico de estrelas
-
-<a href="https://star-history.com/#fcltz/Facet&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=fcltz/Facet&type=Date&theme=dark">
-    <img alt="Gráfico de estrelas do repositório ao longo do tempo" src="https://api.star-history.com/svg?repos=fcltz/Facet&type=Date">
-  </picture>
-</a>
 
 ## Licença
 

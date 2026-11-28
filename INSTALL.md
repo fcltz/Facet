@@ -92,7 +92,7 @@ Get-ChildItem .\release\Facet-Setup-*.exe
 Get-FileHash .\release\Facet-Setup-*.exe -Algorithm SHA256
 ```
 
-O nome segue a versão do `package.json` (hoje `Facet-Setup-0.1.0.exe`). Use o nome que foi gerado.
+O nome segue a versão do `package.json` (hoje `Facet-Setup-0.1.1.exe`). Use o nome que foi gerado.
 
 ### Rodar sem instalar
 

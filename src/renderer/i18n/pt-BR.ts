@@ -789,8 +789,6 @@ export const ptBR = {
     closeExtensionTabs: 'Fechar abas abertas pelas extensões ao abrir o perfil',
     closeExtensionTabsHint:
       'O navegador trata as extensões como recém-instaladas a cada abertura, e muitas abrem a página de boas-vindas de novo. Na primeira abertura com uma extensão nova a página aparece normalmente.',
-    demoNotice:
-      'Etapa 6: cookies, pacotes portáteis de perfis, mudança da pasta de armazenamento e backup com restauração. Proxy, extensões e fingerprint são configurados por perfil.',
     shortcuts: 'Atalhos de teclado',
     viewShortcuts: 'Ver atalhos',
   },

@@ -805,8 +805,6 @@ export const es: Translation = {
     closeExtensionTabs: 'Cerrar las pestañas que abren las extensiones al abrir un perfil',
     closeExtensionTabsHint:
       'El navegador trata las extensiones como recién instaladas en cada apertura, y muchas vuelven a abrir su página de bienvenida. En la primera apertura con una extensión nueva la página aparece normalmente.',
-    demoNotice:
-      'Etapa 6: cookies, paquetes portátiles de perfiles, cambio de la carpeta de almacenamiento y copia de seguridad con restauración. El proxy, las extensiones y la huella se configuran por perfil.',
     shortcuts: 'Atajos de teclado',
     viewShortcuts: 'Ver atajos',
   },

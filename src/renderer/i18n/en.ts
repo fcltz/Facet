@@ -784,8 +784,6 @@ export const en: Translation = {
     closeExtensionTabs: 'Close tabs opened by extensions when a profile opens',
     closeExtensionTabsHint:
       'The browser treats extensions as freshly installed on every launch, and many reopen their welcome page. The first launch with a new extension shows that page as usual.',
-    demoNotice:
-      'Stage 6: cookies, portable profile packages, storage relocation and backup with restore. Proxy, extensions and fingerprint are configured per profile.',
     shortcuts: 'Keyboard shortcuts',
     viewShortcuts: 'View shortcuts',
   },

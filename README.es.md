@@ -7,7 +7,7 @@
   </p>
   <p>
     <a href="#instalar"><img alt="Windows 10 y 11, x64" src="https://img.shields.io/badge/Windows-10%20%7C%2011%20x64-5B5BF7"></a>
-    <a href="package.json"><img alt="Versión 0.1.0" src="https://img.shields.io/badge/versi%C3%B3n-0.1.0-5B5BF7"></a>
+    <a href="package.json"><img alt="Versión 0.1.1" src="https://img.shields.io/badge/versi%C3%B3n-0.1.1-5B5BF7"></a>
     <a href="#funciones"><img alt="Português, English y Español" src="https://img.shields.io/badge/idiomas-PT%20%C2%B7%20EN%20%C2%B7%20ES-5B5BF7"></a>
     <a href="https://github.com/fcltz/Facet/stargazers"><img alt="Estrellas en GitHub" src="https://img.shields.io/github/stars/fcltz/Facet?label=estrellas&color=5B5BF7"></a>
   </p>
@@ -50,7 +50,7 @@ npm ci          # dependencias exactas del package-lock.json
 npm run dist    # descarga Electron y Ungoogled Chromium (SHA-256 verificado) y genera el instalador
 ```
 
-El instalador aparece en `release\Facet-Setup-0.1.0.exe`. Se instala por usuario, permite elegir la carpeta, crea accesos directos e incluye desinstalador.
+El instalador aparece en `release\Facet-Setup-0.1.1.exe`. Se instala por usuario, permite elegir la carpeta, crea accesos directos e incluye desinstalador.
 
 > [!TIP]
 > ¿Vas a pedirle a una IA que lo instale en tu PC? Entrégale el **[INSTALL.md](INSTALL.md)**: tiene el paso a paso, las comprobaciones y los cuidados para no borrar perfiles existentes.
@@ -209,15 +209,6 @@ La estructura del código, los datos locales y el manejo de los navegadores est�
 - Ejecuta `npm run typecheck`, `npm run lint` y `npm run test -- tests/unit` antes de proponer un cambio.
 - Mantén los textos en portugués, inglés y español: `src/renderer/i18n` y `resources/facet-extension/_locales`.
 - Los agentes de IA deben seguir el [AGENTS.md](AGENTS.md).
-
-## Historial de estrellas
-
-<a href="https://star-history.com/#fcltz/Facet&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=fcltz/Facet&type=Date&theme=dark">
-    <img alt="Gráfico de las estrellas del repositorio a lo largo del tiempo" src="https://api.star-history.com/svg?repos=fcltz/Facet&type=Date">
-  </picture>
-</a>
 
 ## Licencia
 
