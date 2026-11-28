@@ -13,9 +13,8 @@ export interface CheckerOptions {
   traceUrl: () => string
   logger: Logger
   /** IP real desta conexão (sem proxy): um proxy que sai por ele é recusado. */
-  realIp?: Pick<RealIpProbe, 'isRealIp'>
+  realIp?: Pick<RealIpProbe, 'isRealIp'> & Partial<Pick<RealIpProbe, 'warm'>>
   now?: () => number
-  preflightTimeoutMs?: number
   checkTimeoutMs?: number
   openForwarder?: typeof ProxyForwarder.open
 }
@@ -27,6 +26,17 @@ export function realIpError(ip: string): AppError {
     `O proxy está saindo pelo IP real desta conexão (${ip}): os sites veriam o seu IP verdadeiro`,
     { ip, reason: 'realIp' },
   )
+}
+
+/**
+ * O que impede abrir um perfil depois da checagem feita pelo proxy local dele (`checkPort`): falha
+ * do próprio proxy (senha, recusa, tempo, proxy remoto fora do ar) ou saída pelo IP real desta
+ * conexão. Um proxy que só bloqueia o destino de teste, ou um geo-IP fora do ar, não impedem.
+ */
+export function launchBlocker(outcome: ProxyCheckOutcome): AppError | null {
+  if (!outcome.error) return null
+  const error = AppError.fromPayload(outcome.error)
+  return error.code === 'PROXY_REAL_IP' || isFatalProxyError(error) ? error : null
 }
 
 const englishRegions = new Intl.DisplayNames(['en'], { type: 'region' })
@@ -92,34 +102,6 @@ export class ProxyChecker {
     this.now = options.now ?? Date.now
   }
 
-  /**
-   * Checagem rápida antes de abrir o perfil, já pelo proxy local do perfil. Só
-   * falhas do próprio proxy (senha, recusa, DNS do proxy, tempo) bloqueiam a
-   * abertura; um proxy que só bloqueia o destino de teste continua utilizável.
-   * Um proxy que sai pelo IP real desta conexão também bloqueia (PROXY_REAL_IP).
-   */
-  async preflight(proxyPort: number, signal?: AbortSignal): Promise<void> {
-    let exitIp: string | null = null
-    try {
-      const response = await requestViaProxy(proxyPort, this.options.traceUrl(), {
-        timeoutMs: this.options.preflightTimeoutMs ?? 8000,
-        signal,
-      })
-      if (response.status >= 400) {
-        this.options.logger.warn(
-          `Destino de teste respondeu HTTP ${response.status} pelo proxy; abrindo assim mesmo`,
-        )
-      } else {
-        exitIp = parseTrace(response.body).ip
-      }
-    } catch (error) {
-      if (isFatalProxyError(error)) throw error
-      this.options.logger.warn('Checagem do proxy inconclusiva; abrindo assim mesmo', error)
-    }
-    const leaked = await this.leakedIp([exitIp], signal)
-    if (leaked) throw realIpError(leaked)
-  }
-
   /** Primeiro IP visto pelo proxy que é o IP real desta conexão (null = nenhum ou sem comparação). */
   private async leakedIp(
     candidates: readonly (string | null)[],
@@ -154,6 +136,9 @@ export class ProxyChecker {
     signal?: AbortSignal,
     secrets: readonly (string | null)[] = [],
   ): Promise<ProxyCheckOutcome> {
+    // o IP real (sem proxy) é consultado enquanto o trace passa pelo proxy: a comparação no fim
+    // não espera mais uma consulta (antes, ela só começava depois do trace)
+    this.options.realIp?.warm?.()
     try {
       let exitIp: string | null = null
       let traceCountry: string | null = null

@@ -2,7 +2,7 @@ import http from 'node:http'
 import net from 'node:net'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { silentLogger } from '@main/logger'
-import { CheckLimiter, ProxyChecker } from '@main/proxy/checker'
+import { CheckLimiter, launchBlocker, ProxyChecker } from '@main/proxy/checker'
 import { ProxyForwarder } from '@main/proxy/forwarder'
 import { GeoIpClient } from '@main/proxy/geoip'
 import { GEO_PROVIDERS, type GeoProvider, type GeoProviderId } from '@main/proxy/geoip/providers'
@@ -426,13 +426,14 @@ describe('ProxyChecker', () => {
       password: null,
     })
     const viaChecker = checker(geo.traceUrl, geo.geoUrl, new RealIpProbe({ urls: [geo.realIpUrl], ttlMs: 0 }))
-    await expect(viaChecker.preflight(local.port)).resolves.toBeUndefined()
+    expect(launchBlocker(await viaChecker.checkPort(local.port))).toBeNull()
     geo.setRealIp(SAO_PAULO.ip)
-    const error = await rejection(viaChecker.preflight(local.port))
-    expect(error.code).toBe('PROXY_REAL_IP')
-    expect(error.details).toMatchObject({ ip: SAO_PAULO.ip })
+    const error = launchBlocker(await viaChecker.checkPort(local.port))
+    expect(error?.code).toBe('PROXY_REAL_IP')
+    expect(error?.details).toMatchObject({ ip: SAO_PAULO.ip })
+    // sem saber o IP real, nada é bloqueado por falta de dados
     const blind = new RealIpProbe({ urls: [`http://127.0.0.1:${await freePort()}/trace`], ttlMs: 0 })
-    await expect(checker(geo.traceUrl, geo.geoUrl, blind).preflight(local.port)).resolves.toBeUndefined()
+    expect(launchBlocker(await checker(geo.traceUrl, geo.geoUrl, blind).checkPort(local.port))).toBeNull()
   })
 
   it('verificação completa: online, IP de saída, país, cidade, fuso e latência pelo proxy', async () => {
@@ -501,7 +502,7 @@ describe('ProxyChecker', () => {
       username: '',
       password: null,
     })
-    await expect(viaTrace.preflight(good.port)).resolves.toBeUndefined()
+    expect(launchBlocker(await viaTrace.checkPort(good.port))).toBeNull()
     // proxy que só bloqueia o destino de teste (responde 502 ao túnel): continua utilizável
     const blocking = track(await fakeStatusProxy(502))
     const blocked = await forwarder({
@@ -511,7 +512,9 @@ describe('ProxyChecker', () => {
       username: '',
       password: null,
     })
-    await expect(viaTls.preflight(blocked.port)).resolves.toBeUndefined()
+    const blockedOutcome = await viaTls.checkPort(blocked.port)
+    expect(blockedOutcome.error?.code).toBe('PROXY_UNREACHABLE')
+    expect(launchBlocker(blockedOutcome)).toBeNull()
     // proxy HTTP e SOCKS5 fora do ar bloqueiam a abertura
     for (const type of ['http', 'socks5'] as const) {
       const dead = await forwarder({
@@ -521,8 +524,18 @@ describe('ProxyChecker', () => {
         username: '',
         password: null,
       })
-      expect((await rejection(viaTls.preflight(dead.port))).code, type).toBe('PROXY_UNREACHABLE')
+      expect(launchBlocker(await viaTls.checkPort(dead.port))?.code, type).toBe('PROXY_UNREACHABLE')
     }
+    // senha recusada também
+    const guarded = track(await fakeRemoteProxy({ username: 'user', password: 'certa' }))
+    const wrong = await forwarder({
+      type: 'http',
+      host: '127.0.0.1',
+      port: guarded.port,
+      username: 'user',
+      password: 'errada',
+    })
+    expect(launchBlocker(await viaTrace.checkPort(wrong.port))?.code).toBe('PROXY_AUTH_FAILED')
   })
 
   it('a fila limita verificações simultâneas e cancela as que esperam', async () => {

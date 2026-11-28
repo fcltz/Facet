@@ -20,10 +20,10 @@ import type { SessionRepository, ProfileSession } from '../repositories/sqlite/s
 import type { Logger } from '../logger'
 import type { ProfileFiles } from './profile-files'
 import type { CdpClient } from './cdp/client'
-import type { ProxyChecker } from '../proxy/checker'
 import type { ForwarderPool } from '../proxy/pool'
 import { upstreamUrl, type UpstreamProxy } from '../proxy/upstream'
 import type { ExtensionLaunch, RuntimeExtensions } from '../extensions/runtime'
+import { NO_STARTUP_TABS } from '../extensions/startup-tabs'
 import {
   IDENTITY_EXTENSION_ID,
   identityLabel,
@@ -88,9 +88,12 @@ export interface RuntimeIdentity {
 /** Proxy local por perfil: abre antes do navegador, fecha depois dele, é recriado na recuperação. */
 export interface RuntimeNetwork {
   pool: ForwarderPool
-  checker: ProxyChecker
   /** Proxy com a senha decifrada; lança PROXY_UNAVAILABLE se não existir mais. */
   upstream: (proxyId: string) => UpstreamProxy
+  /**
+   * A checagem antes de abrir, já pelo proxy local do perfil: IP de saída e geolocalização. Lança
+   * se o próprio proxy falhar (senha, recusa, tempo) ou se ele sair pelo IP real desta conexão.
+   */
   resolveGeo: (proxyId: string, port: number, signal: AbortSignal) => Promise<ProxyGeo>
 }
 interface RuntimeDeps {
@@ -113,51 +116,25 @@ interface RuntimeDeps {
   startPage: () => string
 }
 
-/**
- * A primeira aba que o navegador abre traz a barra "unsupported command-line flag" do
- * --disable-blink-features=AutomationControlled, o flag que mantém navigator.webdriver falso.
- * Abas criadas depois, pelo CDP, não trazem a barra (verificado no Brave 158). Logo depois da
- * conexão, abre uma aba em branco nova e fecha as do início, antes de qualquer página do
- * perfil. Uma falha só gera aviso: o perfil abre com a barra.
- * Devolve as abas fechadas: o `closeTarget` responde antes de a aba sumir, e ela ainda pode
- * aparecer na lista seguinte; quem lista as abas iniciais precisa ignorá-las.
- */
-export async function replaceStartupTab(
-  client: CdpClient,
-  signal: AbortSignal,
-  logger: Logger,
-  waitMs = 5000,
-): Promise<string[]> {
-  const closed: string[] = []
-  try {
-    const deadline = Date.now() + waitMs
-    let startup: string[] = []
-    for (;;) {
-      signal.throwIfAborted()
-      startup = (await client.send('Target.getTargets', {})).targetInfos
-        .filter((target) => target.type === 'page' && target.url === 'about:blank')
-        .map((target) => target.targetId)
-      if (startup.length > 0 || Date.now() >= deadline) break
-      await new Promise((resolve) => setTimeout(resolve, 50))
-    }
-    if (startup.length === 0) {
-      logger.warn('A primeira aba do navegador não apareceu a tempo; a barra de aviso do flag pode ficar')
-      return closed
-    }
-    // A aba nova vem antes: fechar a única aba fecharia a janela.
-    await client.send('Target.createTarget', { url: 'about:blank' })
-    for (const targetId of startup) {
-      await client.send('Target.closeTarget', { targetId })
-      closed.push(targetId)
-    }
-  } catch (error) {
-    if (signal.aborted) throw error
-    logger.warn(
-      'Não foi possível trocar a primeira aba do navegador; a barra de aviso do flag pode ficar',
-      error,
-    )
+/** Duração de cada fase da abertura, para o log ("1,4 s: proxy 0,6 s · navegador 0,5 s · ..."). */
+export class LaunchTiming {
+  private readonly started: number
+  private last: number
+  private readonly phases: [string, number][] = []
+  constructor(private readonly now: () => number = Date.now) {
+    this.started = now()
+    this.last = this.started
   }
-  return closed
+  mark(phase: string): void {
+    const at = this.now()
+    this.phases.push([phase, at - this.last])
+    this.last = at
+  }
+  summary(): string {
+    const seconds = (ms: number): string => `${(ms / 1000).toFixed(1).replace('.', ',')} s`
+    const parts = this.phases.map(([phase, ms]) => `${phase} ${seconds(ms)}`)
+    return `${seconds(this.last - this.started)}${parts.length ? ` (${parts.join(' · ')})` : ''}`
+  }
 }
 
 export class LaunchQueue {
@@ -312,6 +289,9 @@ export class BrowserRuntime implements ProfileRuntime {
     if (!profile || profile.deletedAt !== null)
       throw new AppError('NOT_FOUND', 'Perfil inexistente ou na lixeira')
     const browser = profile.browser
+    // O utilitário da barra de tarefas já fica pronto enquanto o proxy é checado: a janela do
+    // navegador recebe o ícone do perfil no instante em que é criada.
+    if (this.deps.identity.settings().taskbar) this.deps.identity.windows.warm()
     const engine = this.deps.engine(browser)
     const info = await engine.detect()
     signal.throwIfAborted()
@@ -324,16 +304,19 @@ export class BrowserRuntime implements ProfileRuntime {
     let directory: string
     let extensions: ExtensionLaunch
     let fingerprintSnapshot: FingerprintSnapshot
+    const timing = new LaunchTiming()
     try {
       extensions = this.deps.extensions.prepare(profile)
       // Marcas das Client Hints e sufixo do User-Agent vêm da sondagem deste navegador.
       const capabilities = info.fingerprintCapabilities ?? capabilitiesFor(info, { browser })
       let proxyGeo: ProxyGeo | null = null
       if (profile.proxyId) {
-        const { pool, checker, upstream } = this.deps.network
+        const { pool, upstream } = this.deps.network
         proxyPort = await pool.open(id, profile.proxyId, upstreamUrl(upstream(profile.proxyId)))
-        await checker.preflight(proxyPort, signal)
+        // Uma consulta só pelo proxy (o IP de saída; a geolocalização vem do cache quando o IP é
+        // o mesmo da última checagem): falha do proxy ou saída pelo IP real impedem a abertura.
         proxyGeo = await this.deps.network.resolveGeo(profile.proxyId, proxyPort, signal)
+        timing.mark('proxy')
       }
       fingerprintSnapshot = resolveFingerprint(
         profile.fingerprint,
@@ -421,6 +404,9 @@ export class BrowserRuntime implements ProfileRuntime {
         async (child) => {
           entry.child = child
           entry.session.pid = child.pid ?? null
+          // Processo recém-criado pelo próprio Facet: a janela recebe o botão próprio da barra de
+          // tarefas no instante em que o navegador a cria, antes de aparecer.
+          this.trackWindows(entry)
           this.deps.sessions.save(entry.session)
           for (let i = 0; i < 5 && child.pid; i++) {
             entry.identity = await inspectProcess(child.pid)
@@ -434,8 +420,7 @@ export class BrowserRuntime implements ProfileRuntime {
             )
           entry.session.processStartedAt = entry.identity.startedAt
           this.deps.sessions.save(entry.session)
-          // Processo conferido como deste perfil: a janela recebe o botão próprio assim que surgir.
-          this.trackWindows(entry)
+          timing.mark('processo')
         },
         {
           proxyPort,
@@ -446,8 +431,10 @@ export class BrowserRuntime implements ProfileRuntime {
           window: view.window,
         },
       )
-      entry.client = launched.client
+      const client = launched.client
+      entry.client = client
       signal.throwIfAborted()
+      timing.mark('navegador')
       entry.session = {
         ...entry.session,
         phase: 'running',
@@ -455,15 +442,26 @@ export class BrowserRuntime implements ProfileRuntime {
         wsEndpoint: launched.endpoint,
         engineVersion: launched.version.product,
       }
-      // Antes de tudo: leva junto a barra de aviso do flag que fica na primeira aba.
-      const replaced = await replaceStartupTab(launched.client, signal, this.deps.logger)
-      await this.attach(id, entry, launched.client)
-      // Confere se o navegador carregou as extensões (senão o perfil fecha com o erro) e passa a
-      // vigiar as abas de boas-vindas que elas abrem a cada abertura.
-      const tabs = await this.deps.extensions.afterConnect(id, launched.client, extensions, signal)
+      // A aba inicial (em branco) é preparada com o fingerprint antes de qualquer página do perfil.
+      // O --test-type já tirou dela a barra de aviso do flag de automação.
+      await this.attach(id, entry, client)
+      // Etapas independentes, ao mesmo tempo; a primeira página só abre depois de todas:
+      // - extensões carregadas (senão o perfil fecha com o erro) e a guarda das abas de boas-vindas;
+      // - cookies importados (a primeira requisição já os leva);
+      // - a aba inicial pronta.
+      const [guard, cookies, blank] = await Promise.allSettled([
+        this.deps.extensions.afterConnect(id, client, extensions, signal),
+        this.deps.cookies.applyPending(id, client, signal),
+        this.initialBlankPages(client, signal).then(async (pages) => {
+          for (const page of pages) await entry.fingerprint!.ready(page.targetId)
+          return pages
+        }),
+      ])
+      const tabs = guard.status === 'fulfilled' ? guard.value : NO_STARTUP_TABS
       entry.stopTabs = () => tabs.stop()
-      // Antes de qualquer página do perfil: a primeira requisição já leva os cookies importados.
-      await this.deps.cookies.applyPending(id, launched.client, signal)
+      for (const step of [guard, cookies, blank]) if (step.status === 'rejected') throw step.reason
+      const initial = blank.status === 'fulfilled' ? blank.value : []
+      timing.mark('preparo')
       const startPage = this.deps.startPage()
       const urls = restore.length
         ? restore
@@ -472,21 +470,21 @@ export class BrowserRuntime implements ProfileRuntime {
           : isWebUrl(startPage)
             ? [startPage]
             : []
-      const initial = await this.initialBlankPages(launched.client, signal, replaced)
-      for (const tab of initial) {
-        tabs.keep(tab.targetId)
-        await entry.fingerprint!.ready(tab.targetId)
-      }
+      for (const tab of initial) tabs.keep(tab.targetId)
+      const [first, ...others] = initial
       if (urls.length) {
-        for (const url of urls) {
+        // A primeira página abre na própria aba inicial: sem aba nova e sem aba em branco fechada.
+        const pending = [...urls]
+        if (first) await entry.fingerprint!.navigate(first.targetId, pending.shift()!)
+        for (const url of pending) {
           signal.throwIfAborted()
           const targetId = await entry.fingerprint!.createPage()
           tabs.keep(targetId)
           await entry.fingerprint!.navigate(targetId, url)
         }
-        for (const tab of initial)
-          await launched.client.send('Target.closeTarget', { targetId: tab.targetId })
-      } else if (initial.length === 0) {
+        // Mais de uma aba em branco no início (raro): as que sobraram saem.
+        for (const tab of others) await client.send('Target.closeTarget', { targetId: tab.targetId })
+      } else if (!first) {
         // Sem aba inicial (o navegador não chegou a criá-la): garante uma janela visível.
         const targetId = await entry.fingerprint!.createPage()
         tabs.keep(targetId)
@@ -494,9 +492,11 @@ export class BrowserRuntime implements ProfileRuntime {
       this.deps.sessions.save(entry.session)
       if (entry.fingerprintError) throw entry.fingerprintError
       this.set(id, 'running')
+      timing.mark('página')
+      this.deps.logger.info(`Perfil ${profile.serial} aberto em ${timing.summary()}`)
       this.deps.emit('fingerprint.changed', { profileId: id })
       tabs.arm()
-      this.deps.extensions.afterStart(id, launched.client, extensions, entry.extensionAbort!.signal)
+      this.deps.extensions.afterStart(id, client, extensions, entry.extensionAbort!.signal)
     } catch (error) {
       try {
         await this.stopEntry(id)
@@ -508,25 +508,19 @@ export class BrowserRuntime implements ProfileRuntime {
     }
   }
   /**
-   * A aba inicial em branco: a que substituiu a primeira aba do navegador ou, se a troca falhou,
-   * a do próprio navegador (criada logo depois de abrir o CDP). Espera por ela para que as
-   * páginas do perfil abram na mesma janela, e não numa segunda janela.
+   * A aba inicial em branco, a do próprio navegador (o about:blank da linha de comando). Espera por
+   * ela para que as páginas do perfil abram nela, na mesma janela, e não numa segunda janela.
    */
   private async initialBlankPages(
     client: CdpClient,
     signal: AbortSignal,
-    closed: readonly string[] = [],
   ): Promise<Protocol.Target.TargetInfo[]> {
     const deadline = Date.now() + 10000
     for (;;) {
       signal.throwIfAborted()
-      // A primeira aba do navegador, já fechada, ainda pode aparecer por alguns instantes: prepará-la
-      // falharia no meio ("a aba fechou durante a preparação") e derrubaria a abertura.
-      const pages = (await client.send('Target.getTargets', {})).targetInfos.filter(
-        (t) => t.type === 'page' && !closed.includes(t.targetId),
-      )
+      const pages = (await client.send('Target.getTargets', {})).targetInfos.filter((t) => t.type === 'page')
       if (pages.length > 0 || Date.now() >= deadline) return pages.filter((t) => t.url === 'about:blank')
-      await new Promise((resolve) => setTimeout(resolve, 100))
+      await new Promise((resolve) => setTimeout(resolve, 25))
     }
   }
   /** Arquivos de identificação conforme as configurações atuais; falha só gera aviso. */

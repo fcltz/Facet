@@ -4,7 +4,6 @@ import { join } from 'node:path'
 import { PREVIEW_ENGINE_MAJOR } from '@shared/constants'
 import { interfaceLanguageFor } from '@shared/schemas/settings'
 import type { EmitFn } from '@shared/ipc/events'
-import { AppError } from '@shared/ipc/result'
 import type { Logger } from './logger'
 import type { AppPaths } from './paths'
 import { openDatabase } from './db/client'
@@ -21,7 +20,7 @@ import { ensureBuiltinFacet, settingsSeedMarker } from './extensions/builtin'
 import { ExtensionRuntime, type ExtensionTiming } from './extensions/runtime'
 import { ExtensionStore } from './extensions/store'
 import { prodVersionFrom, WebStoreClient } from './extensions/webstore'
-import { CheckLimiter, ProxyChecker } from './proxy/checker'
+import { CheckLimiter, launchBlocker, ProxyChecker } from './proxy/checker'
 import { DEFAULT_TRACE_URL, GeoIpClient } from './proxy/geoip'
 import { DEFAULT_REAL_IP_URLS, RealIpProbe } from './proxy/real-ip'
 import { ProfileIdentityStore } from './identity/extension'
@@ -43,7 +42,7 @@ import { JobRunner } from './jobs'
 import { TransferService } from './services/transfer.service'
 import { BackupService } from './services/backup.service'
 import { BackupScheduler } from './backup/scheduler'
-import { samePath } from './browser/process'
+import { ProcessHelper, samePath, useProcessHelper } from './browser/process'
 import { ProfilesRootService, relocationJournalFile, resumeRelocation } from './profiles-root/relocate'
 
 /** Destinos de rede trocáveis nos testes (servidores locais em vez da internet). */
@@ -104,6 +103,12 @@ export function createContainer(deps: ContainerDeps) {
   const newId = deps.newId ?? randomUUID
   const database = openDatabase(deps.paths.databaseFile, deps.migrationsFolder)
   try {
+    // Abrir, fechar e recuperar perfis consultam processos: pelo utilitário nativo, sem o PowerShell.
+    if (deps.windowHelperPath) {
+      const helper = new ProcessHelper({ path: deps.windowHelperPath, logger: deps.logger })
+      useProcessHelper(helper)
+      helper.warm()
+    }
     if (database.brokenReferences > 0)
       deps.logger.error(`Banco com ${database.brokenReferences} referências quebradas após as migrations`)
     // Instalação nova: a tela de boas-vindas já abre no idioma do sistema, se o Facet tiver.
@@ -171,6 +176,12 @@ export function createContainer(deps: ContainerDeps) {
       providers: deps.network?.geoProviders,
       now,
     })
+    // Geolocalização das últimas checagens: abrir um perfil logo depois de iniciar o Facet não
+    // consulta o geo-IP de novo quando o IP de saída é o mesmo (vale pelo prazo do cache).
+    for (const proxy of repos.proxies.list()) {
+      if (proxy.checkStatus !== 'online' || !proxy.exitIp || !proxy.countryCode || !proxy.checkedAt) continue
+      geo.remember(proxy.exitIp, proxy, proxy.checkedAt)
+    }
     const traceUrl = deps.network?.traceUrl ?? DEFAULT_TRACE_URL
     const realIp = new RealIpProbe({
       urls: deps.network?.realIpUrls ?? (deps.network?.traceUrl ? [] : DEFAULT_REAL_IP_URLS),
@@ -250,12 +261,12 @@ export function createContainer(deps: ContainerDeps) {
       emit: deps.emit,
       network: {
         pool,
-        checker,
         upstream: (proxyId) => proxies.upstream(proxyId),
+        // A única checagem antes de abrir (antes eram duas consultas iguais ao trace, em sequência).
         resolveGeo: async (id, port, signal) => {
           const outcome = await proxies.checkPort(id, port, signal)
-          // O trace da checagem anterior pode ter falhado: o geo-IP também detecta o IP real.
-          if (outcome.error?.code === 'PROXY_REAL_IP') throw AppError.fromPayload(outcome.error)
+          const blocker = launchBlocker(outcome)
+          if (blocker) throw blocker
           return outcome
         },
       },
@@ -422,13 +433,15 @@ export function createContainer(deps: ContainerDeps) {
         scheduler.stop()
         proxies.cancelCheck()
         transfer.close()
-        // o utilitário da barra de tarefas termina quando a entrada fecha
+        // os utilitários nativos terminam quando a entrada fecha
         windowIdentity.close()
+        useProcessHelper(null)
         database.close()
         await pool.closeAll()
       },
     }
   } catch (error) {
+    useProcessHelper(null)
     database.close()
     throw error
   }

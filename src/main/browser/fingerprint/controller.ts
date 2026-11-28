@@ -15,8 +15,11 @@ interface PreparedTarget {
 
 /** Quanto esperar o navegador deixar de listar um alvo cuja preparação falhou. */
 const VANISH_WAIT_MS = 2000
-/** Espera pela resposta do site numa navegação do Facet; depois, a aba segue carregando. */
-const NAVIGATION_WAIT_MS = 5000
+/**
+ * Espera pela resposta numa navegação do Facet: só o bastante para um erro do próprio comando
+ * (endereço inválido) chegar. Depois, a aba segue carregando e o perfil já conta como aberto.
+ */
+const NAVIGATION_WAIT_MS = 300
 /** Prazo do pedido que segue em segundo plano depois da espera (só para o log). */
 const NAVIGATION_REQUEST_MS = 60000
 
@@ -150,9 +153,9 @@ export class FingerprintController {
   }
   /**
    * O Page.navigate só responde quando o site responde (verificado no Brave 158: 7 s para um
-   * servidor de 7 s, nada em 40 s para um travado). Site ou proxy lento não pode impedir o
-   * perfil de abrir: depois de NAVIGATION_WAIT_MS a aba segue carregando e o resultado só
-   * vai para o log. Um erro do próprio comando, antes disso, continua sendo erro.
+   * servidor de 7 s, nada em 40 s para um travado). Site ou proxy lento não pode atrasar a
+   * abertura: depois de NAVIGATION_WAIT_MS a aba segue carregando e o resultado só vai para o
+   * log. Um erro do próprio comando, antes disso, continua sendo erro.
    */
   async navigate(targetId: string, url: string): Promise<void> {
     const sessionId = await this.ready(targetId)
@@ -167,7 +170,8 @@ export class FingerprintController {
         if (result.errorText) this.logger.warn('Navegação inicial não terminou', result.errorText)
         return
       }
-      this.logger.warn('O site ainda não respondeu; o perfil abre com a aba carregando')
+      // o normal com um site de verdade (e mais ainda pelo proxy): só para investigar
+      this.logger.debug('O site ainda não respondeu; o perfil abre com a aba carregando')
       void navigation.then(
         (late) => {
           if (late.errorText) this.logger.warn('Navegação inicial não terminou', late.errorText)

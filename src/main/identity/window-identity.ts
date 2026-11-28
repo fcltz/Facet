@@ -47,6 +47,14 @@ export class WindowIdentity {
     return this.options.helperPath !== null
   }
 
+  /**
+   * Inicia o utilitário antes de o navegador abrir: quando a janela for criada, ele já está
+   * esperando por ela e a marca antes de aparecer na barra de tarefas.
+   */
+  warm(): void {
+    if (this.enabled && !this.closing) this.ensure()
+  }
+
   track(target: WindowIdentityTarget): void {
     if (!this.enabled) return
     this.targets.set(target.pid, { ...target })

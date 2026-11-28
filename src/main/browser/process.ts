@@ -1,8 +1,11 @@
-import { execFile } from 'node:child_process'
+import { execFile, spawn, type ChildProcess } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import readline from 'node:readline'
 import { promisify } from 'node:util'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { AppError } from '@shared/ipc/result'
+import type { Logger } from '../logger'
 
 const exec = promisify(execFile)
 export interface ProcessIdentity {
@@ -10,6 +13,154 @@ export interface ProcessIdentity {
   startedAt: string
   executablePath: string
   args: string[]
+}
+/** Linha do Win32_Process (Get-CimInstance) ou do utilitário nativo, com os mesmos campos. */
+interface ProcessRow {
+  ProcessId: number
+  ExecutablePath: string | null
+  CommandLine: string | null
+  Started: string
+}
+interface PendingQuery {
+  resolve: (rows: ProcessRow[]) => void
+  reject: (error: Error) => void
+  timer: ReturnType<typeof setTimeout>
+}
+export interface ProcessHelperOptions {
+  /** `facet-win-helper.exe` (modo --processes). */
+  path: string
+  logger?: Logger
+  /** Prazo de cada consulta; passou disso, a consulta vai para o PowerShell. */
+  timeoutMs?: number
+  /** Espera antes de tentar iniciar de novo um utilitário que falhou. */
+  retryMs?: number
+  /** Troca o processo do utilitário nos testes. */
+  spawnHelper?: (file: string) => ChildProcess
+}
+
+/**
+ * Consultas de processos pelo utilitário nativo (`facet-win-helper.exe --processes`): o PowerShell
+ * leva ~2-3 s só para iniciar, e cada abertura e cada fechamento de perfil faziam várias consultas
+ * seguidas. Um processo para todas as consultas, iniciado sob demanda e encerrado junto com o
+ * Facet (a entrada fecha). Sem ele, ou se ele falhar, as consultas voltam para o PowerShell.
+ */
+export class ProcessHelper {
+  private child: ChildProcess | null = null
+  private readonly pending = new Map<string, PendingQuery>()
+  private nextId = 1
+  private failedAt = Number.NEGATIVE_INFINITY
+  private warned = false
+  private closed = false
+
+  constructor(private readonly options: ProcessHelperOptions) {}
+
+  /** Linhas do processo `pid` (ou de todos com --user-data-dir=); null = utilitário indisponível. */
+  async list(pid?: number): Promise<ProcessRow[] | null> {
+    const child = this.ensure()
+    if (!child?.stdin?.writable) return null
+    const id = String(this.nextId++)
+    try {
+      return await new Promise<ProcessRow[]>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          this.pending.delete(id)
+          reject(new Error('o utilitário de processos não respondeu a tempo'))
+        }, this.options.timeoutMs ?? 5000)
+        this.pending.set(id, { resolve, reject, timer })
+        child.stdin!.write(`list\t${id}\t${pid === undefined ? '*' : Math.trunc(pid)}\n`)
+      })
+    } catch (error) {
+      this.fail(error)
+      return null
+    }
+  }
+
+  /** Inicia o utilitário em segundo plano: a primeira abertura de perfil não espera por ele. */
+  warm(): void {
+    void this.list(process.pid)
+  }
+
+  close(): void {
+    this.closed = true
+    this.stop(new Error('utilitário de processos encerrado'))
+  }
+
+  private ensure(): ChildProcess | null {
+    if (this.child) return this.child
+    if (this.closed || Date.now() - this.failedAt < (this.options.retryMs ?? 30000)) return null
+    if (!this.options.spawnHelper && !existsSync(this.options.path)) {
+      this.fail(new Error(`utilitário não encontrado: ${this.options.path}`))
+      return null
+    }
+    let child: ChildProcess
+    try {
+      child = this.options.spawnHelper
+        ? this.options.spawnHelper(this.options.path)
+        : spawn(this.options.path, ['--processes'], { stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true })
+    } catch (error) {
+      this.fail(error)
+      return null
+    }
+    this.child = child
+    child.once('error', (error) => this.fail(error))
+    child.once('exit', (code) => {
+      if (this.child === child) this.fail(new Error(`utilitário de processos encerrou (código ${code ?? '?'})`))
+    })
+    child.stdin?.on('error', () => undefined)
+    if (child.stdout) readline.createInterface({ input: child.stdout }).on('line', (line) => this.receive(line))
+    // Não segura o Facet (nem os testes) aberto: só as consultas em andamento, pelos prazos.
+    child.unref()
+    for (const stream of [child.stdin, child.stdout] as ({ unref?: () => void } | null)[]) stream?.unref?.()
+    return child
+  }
+
+  private receive(line: string): void {
+    const [kind, id = '', payload = ''] = line.split('\t')
+    const query = this.pending.get(id)
+    if (!query) return
+    this.pending.delete(id)
+    clearTimeout(query.timer)
+    if (kind !== 'ok') {
+      query.reject(new Error(payload || line))
+      return
+    }
+    try {
+      query.resolve(JSON.parse(payload) as ProcessRow[])
+    } catch (error) {
+      query.reject(error instanceof Error ? error : new Error(String(error)))
+    }
+  }
+
+  /** Falha do utilitário: as consultas vão para o PowerShell até a próxima tentativa. */
+  private fail(error: unknown): void {
+    if (!this.closed) {
+      this.failedAt = Date.now()
+      if (!this.warned)
+        this.options.logger?.warn('Consultas de processos voltaram para o PowerShell (mais lento)', error)
+      this.warned = true
+    }
+    this.stop(error instanceof Error ? error : new Error(String(error)))
+  }
+
+  private stop(error: Error): void {
+    const child = this.child
+    this.child = null
+    for (const [id, query] of this.pending) {
+      clearTimeout(query.timer)
+      this.pending.delete(id)
+      query.reject(error)
+    }
+    if (child) {
+      child.stdin?.end()
+      if (child.exitCode === null) child.kill()
+    }
+  }
+}
+
+let processHelper: ProcessHelper | null = null
+/** Utilitário nativo das consultas de processos no Windows (null = só o PowerShell). */
+export function useProcessHelper(helper: ProcessHelper | null): void {
+  if (processHelper && processHelper !== helper) processHelper.close()
+  processHelper = helper
 }
 export function splitCommandLine(command: string): string[] {
   const args: string[] = []
@@ -36,7 +187,7 @@ export function processUsesDirectory(identity: ProcessIdentity, directory: strin
   const value = identity.args.find((a) => a.startsWith('--user-data-dir='))?.slice('--user-data-dir='.length)
   return Boolean(value && samePath(value, directory)) && !identity.args.some((a) => a.startsWith('--type='))
 }
-async function windowsProcesses(pid?: number): Promise<ProcessIdentity[]> {
+async function powershellProcesses(pid?: number): Promise<ProcessRow[]> {
   const filter =
     pid === undefined ? "CommandLine LIKE '%--user-data-dir=%'" : `ProcessId = ${Math.trunc(pid)}`
   // Sem UTF-8 explícito o PowerShell 5.1 escreve na página de código OEM e caminhos com
@@ -48,12 +199,11 @@ async function windowsProcesses(pid?: number): Promise<ProcessIdentity[]> {
     maxBuffer: 4 * 1024 * 1024,
   })
   const raw: unknown = stdout.trim() ? JSON.parse(stdout) : []
-  const rows = (Array.isArray(raw) ? raw : [raw]) as {
-    ProcessId: number
-    ExecutablePath: string | null
-    CommandLine: string | null
-    Started: string
-  }[]
+  return (Array.isArray(raw) ? raw : [raw]) as ProcessRow[]
+}
+async function windowsProcesses(pid?: number): Promise<ProcessIdentity[]> {
+  // O utilitário devolve exatamente o mesmo que o PowerShell (inclusive o texto de Started).
+  const rows = (await processHelper?.list(pid)) ?? (await powershellProcesses(pid))
   return rows
     .filter((r) => r.ExecutablePath && r.CommandLine)
     .map((r) => ({

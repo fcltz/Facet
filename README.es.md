@@ -60,7 +60,7 @@ El instalador aparece en `release\Facet-Setup-0.1.0.exe`. Se instala por usuario
 
 - Windows 10 u 11 x64, conexión a internet en la primera preparación y unos **3 GB libres**.
 - **Node.js 24.x** con npm (el `package.json` también acepta 22.13+ y 26+) y **Git**.
-- La utilidad de la barra de tareas se compila con el `csc.exe` de .NET Framework 4, que ya viene con Windows. No hace falta Visual Studio: SQLite usa binarios precompilados.
+- La utilidad nativa de Windows (botón de cada perfil en la barra de tareas y consultas de procesos) se compila con el `csc.exe` de .NET Framework 4, que ya viene con Windows. No hace falta Visual Studio: SQLite usa binarios precompilados.
 
 </details>
 

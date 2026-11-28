@@ -177,7 +177,8 @@ export class ExtensionRuntime implements RuntimeExtensions {
           { names, extensionIds: missing.map((item) => item.id) },
         )
       }
-      await pause(200, signal)
+      // a primeira página espera por esta conferência: consulta de novo logo
+      await pause(50, signal)
     }
   }
 

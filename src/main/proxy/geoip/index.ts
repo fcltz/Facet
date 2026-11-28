@@ -1,4 +1,5 @@
 import { AppError } from '@shared/ipc/result'
+import type { ProxyGeo } from '@shared/schemas/proxy'
 import type { GeoIpProvider } from '@shared/schemas/settings'
 import { isFatalProxyError, requestViaProxy } from '../http-via-proxy'
 import { redactSecrets } from '../upstream'
@@ -41,6 +42,17 @@ export class GeoIpClient {
     this.ttlMs = options.ttlMs ?? 24 * 60 * 60 * 1000
     this.timeoutMs = options.timeoutMs ?? 8000
     this.now = options.now ?? Date.now
+  }
+
+  /** Geolocalização já conhecida de um IP (checagem gravada no banco), contada desde `at`. */
+  remember(ip: string, geo: ProxyGeo, at: number): void {
+    const current = this.cache.get(ip)
+    if (current && current.at >= at) return
+    const { countryCode, countryName, region, city, timezone, latitude, longitude } = geo
+    this.cache.set(ip, {
+      at,
+      geo: { ip, countryCode, countryName, region, city, timezone, latitude, longitude },
+    })
   }
 
   cached(ip: string | null): GeoResult | null {

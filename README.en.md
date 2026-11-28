@@ -60,7 +60,7 @@ The installer shows up as `release\Facet-Setup-0.1.0.exe`. It installs per user,
 
 - Windows 10 or 11 x64, internet access for the first setup and about **3 GB free**.
 - **Node.js 24.x** with npm (`package.json` also accepts 22.13+ and 26+) and **Git**.
-- The taskbar helper is compiled with the .NET Framework 4 `csc.exe` that ships with Windows. Visual Studio is not needed: SQLite uses prebuilt binaries.
+- The native Windows helper (per-profile taskbar button and process queries) is compiled with the .NET Framework 4 `csc.exe` that ships with Windows. Visual Studio is not needed: SQLite uses prebuilt binaries.
 
 </details>
 

@@ -297,7 +297,9 @@ export class ChromiumEngine implements BrowserEngine {
     const size = environment.window ?? profile.launchOptions.window ?? DEFAULT_WINDOW
     const pipe = this.flavor.extensionLoading === 'pipe' && environment.extensionDirs.length > 0
     // Abre só uma aba em branco (o about:blank final de spawn): a sessão nativa foi apagada
-    // acima, e as páginas iniciais/abas restauradas são abertas pelo Facet depois de conectar.
+    // acima, e as páginas iniciais/abas restauradas são abertas pelo Facet depois de conectar,
+    // a primeira nesta mesma aba. A URL não vai na linha de comando: a primeira requisição sairia
+    // antes do fingerprint (User-Agent e Client Hints verdadeiros, verificado no Ungoogled 158).
     // Não usar --no-startup-window: com ele o navegador continua vivo quando o usuário fecha a
     // última janela, e o status nunca voltaria para "parado".
     const child = this.spawn(
@@ -307,6 +309,10 @@ export class ChromiumEngine implements BrowserEngine {
         // Com depuração remota o Chromium marca navigator.webdriver = true (verificado no Brave
         // 158); esta flag devolve o valor de um navegador comum, sem barra de aviso. Reservada.
         '--disable-blink-features=AutomationControlled',
+        // Sem ela, a primeira aba abre com a barra "flag de linha de comando não suportada" da flag
+        // acima (o Chromium não mostra as barras de início com --test-type, como no ChromeDriver);
+        // navigator.webdriver continua falso (verificado no Ungoogled 158).
+        '--test-type',
         `--lang=${fingerprint.languages.list[0] ?? 'en-US'}`,
         `--window-size=${size.width},${size.height}`,
         // Todo o tráfego (inclusive 127.0.0.1) vai pelo proxy local: sem saída direta e sem
@@ -436,7 +442,8 @@ export class ChromiumEngine implements BrowserEngine {
       } catch (error) {
         client?.close()
         lastError = error
-        await sleep(120)
+        // o arquivo da porta aparece ~0,5 s depois de abrir: conferir com frequência não custa nada
+        await sleep(40)
       }
     }
     throw new AppError(

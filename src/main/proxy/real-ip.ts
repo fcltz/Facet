@@ -161,6 +161,14 @@ export class RealIpProbe {
   }
 
   /**
+   * Começa a consulta (se o resultado guardado venceu) sem esperar por ela: a verificação de um
+   * proxy chama isto antes do trace pelo proxy, e a comparação no fim já encontra a resposta.
+   */
+  warm(): void {
+    void this.current().catch(() => undefined)
+  }
+
+  /**
    * O IP é desta conexão sem proxy? Antes de acusar, confirma com uma consulta nova quando o
    * resultado guardado tem mais de 1 min (o IP real pode ter mudado).
    */

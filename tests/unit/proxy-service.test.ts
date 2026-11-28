@@ -53,7 +53,7 @@ function setup(
   let counter = 0
   const newId = (): string => `00000000-0000-4000-8000-${String(++counter).padStart(12, '0')}`
   const check = vi.fn(options.check ?? (async () => TOKYO))
-  const checker = { check, preflight: vi.fn() } as unknown as ProxyChecker
+  const checker = { check } as unknown as ProxyChecker
   const closeConnectionsForProxy = vi.fn((): string[] => ['perfil-aberto'])
   const pool = { closeConnectionsForProxy } as unknown as ForwarderPool
   const rotate = vi.fn<typeof rotateIp>(async () => ({ outcome: TOKYO, changed: true }))

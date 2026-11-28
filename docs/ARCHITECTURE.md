@@ -9,7 +9,7 @@
 | `src/renderer`              | React, traduções, formulários, tabela e Zustand                                |
 | `src/shared`                | Schemas Zod, tipos, contratos IPC, constantes e dados de fingerprint           |
 | `drizzle`                   | Migrations aplicadas antes de abrir a interface                                |
-| `native/win-helper`         | Identificação das janelas na barra de tarefas do Windows                       |
+| `native/win-helper`         | Barra de tarefas do Windows e consultas de processos (sem PowerShell)          |
 | `resources/facet-extension` | Extensão integrada e recursos de bloqueio de terceiros                         |
 | `scripts`                   | Preparação de ícones, binários, navegador e listas de bloqueio                 |
 | `tests`                     | Testes unitários, integrações e cenários de interface                          |
@@ -38,6 +38,15 @@ SQLite usa WAL, chaves estrangeiras e transações. Configurações antigas em J
 ## Navegadores
 
 Cada perfil inicia o navegador escolhido com sua própria pasta. A porta CDP é atribuída pelo sistema; o Facet acompanha início, encerramento, cancelamento e reconexão.
+
+Abertura de um perfil:
+
+1. Com proxy, uma checagem só pelo proxy local do perfil: IP de saída, comparação com o IP real (consultado ao mesmo tempo) e geolocalização, que vem do cache quando o IP é o mesmo da última checagem, inclusive a gravada no banco antes de reiniciar o app.
+2. O navegador abre com uma aba em branco. `--test-type` tira dela a barra "flag não suportada" que `--disable-blink-features=AutomationControlled` traria; `navigator.webdriver` continua falso.
+3. O Facet aplica o fingerprint nessa aba e a navega para a primeira URL; as demais abrem em abas novas. A URL não vai na linha de comando: a primeira requisição sairia antes do fingerprint, com User-Agent e Client Hints verdadeiros.
+4. O perfil conta como aberto assim que a página é pedida, sem esperar o site responder. O log registra a duração de cada fase.
+
+O utilitário nativo (`native/win-helper`, só no Windows) marca a janela na barra de tarefas no instante em que o navegador a cria, antes de aparecer, e responde as consultas de processos de abrir, fechar e recuperar perfis. O PowerShell, usado quando o utilitário falta ou falha, leva segundos por consulta.
 
 O Ungoogled Chromium é baixado de uma versão fixada e verificado por SHA-256. Chrome, Brave e Opera são detectados, com opção de caminho manual. Sondagens usam diretórios temporários.
 

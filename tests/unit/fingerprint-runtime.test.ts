@@ -226,8 +226,9 @@ describe('navegação do Facet com site lento', () => {
       answer = reply
     })
     const warn = vi.fn()
+    const debug = vi.fn()
     const fatal = vi.fn()
-    const controller = new FingerprintController(cdp, config, { ...silentLogger, warn }, fatal, {
+    const controller = new FingerprintController(cdp, config, { ...silentLogger, warn, debug }, fatal, {
       navigationWaitMs: 150,
     })
     await controller.start()
@@ -236,7 +237,9 @@ describe('navegação do Facet com site lento', () => {
     await controller.navigate(id, 'https://lento.example/')
     expect(Date.now() - started).toBeGreaterThanOrEqual(140)
     expect(answer).toBeDefined()
-    expect(warn).toHaveBeenCalledWith('O site ainda não respondeu; o perfil abre com a aba carregando')
+    // o normal com um site de verdade: só no log de depuração
+    expect(debug).toHaveBeenCalledWith('O site ainda não respondeu; o perfil abre com a aba carregando')
+    expect(warn).not.toHaveBeenCalled()
     // a resposta que chega depois só vai para o log
     answer!({ result: { frameId: 'frame', loaderId: 'loader', errorText: 'net::ERR_TIMED_OUT' } })
     await vi.waitFor(() =>

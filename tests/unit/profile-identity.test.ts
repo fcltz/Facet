@@ -243,6 +243,23 @@ describe('utilitário da barra de tarefas (cliente)', () => {
     ])
   })
 
+  it('warm inicia o utilitário antes do navegador; o track seguinte vai para o mesmo processo', async () => {
+    const { spawned, spawnHelper } = fakeHelper()
+    const windows = new WindowIdentity({ helperPath: 'helper.exe', logger: silentLogger, spawnHelper })
+    windows.warm()
+    expect(spawned).toHaveLength(1)
+    expect(spawned[0]!.lines).toEqual([])
+    windows.warm()
+    windows.track(TARGET)
+    await flush()
+    expect(spawned).toHaveLength(1)
+    expect(spawned[0]!.lines).toEqual(['track\t4321\tFacet.Profile.x\tC:\\i.ico\t01 · Loja A\t"F.exe"'])
+    // sem utilitário, warm não faz nada
+    const none = fakeHelper()
+    new WindowIdentity({ helperPath: null, logger: silentLogger, spawnHelper: none.spawnHelper }).warm()
+    expect(none.spawned).toHaveLength(0)
+  })
+
   it('sem utilitário (fora do Windows ou ausente) não inicia processo nenhum', () => {
     const { spawned, spawnHelper } = fakeHelper()
     new WindowIdentity({ helperPath: null, logger: silentLogger, spawnHelper }).track(TARGET)
